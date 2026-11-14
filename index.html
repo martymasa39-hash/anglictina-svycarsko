@@ -20,10 +20,30 @@ function renderSwissBank(){
  }
 }
 const swissPictures={timetable:'🚆🕒',noticed:'👀💡',disappeared:'👤💨',replied:'💬↩️',pointed:'👉🪜',train:'🚆',station:'🚉',ticket:'🎫',mountain:'🏔️',hotel:'🏨',food:'🍽️',water:'💧',book:'📖',rain:'🌧️',snow:'❄️',sun:'☀️',bus:'🚌',car:'🚗',house:'🏠',money:'💰',phone:'📱',walk:'🚶',walking:'🚶',travel:'🧳',travelling:'🧳',look:'👀',looking:'👀',speak:'🗣️',speaking:'🗣️',listen:'👂',listening:'👂',write:'✍️',writing:'✍️',read:'📖',reading:'📖',help:'🤝',work:'💼',working:'💼',time:'🕒',clock:'🕒',arrived:'🚉',left:'👋',asked:'❓💬',said:'💬',smiled:'😊',opened:'🚪',closed:'🚪',bought:'🛍️',buy:'🛍️',stairs:'🪜',platform:'🚉',journey:'🚆',bag:'🎒',backpack:'🎒'};
+let swissSpeechRecognizer=null;
+function swissStopSpeech(){if(swissSpeechRecognizer){const rec=swissSpeechRecognizer;swissSpeechRecognizer=null;try{rec.abort()}catch(e){}}}
+function swissSpeechText(v){return String(v||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').trim().replace(/\s+/g,' ')}
+function swissRecogniseCard(item,onMatch,status){
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Speech){status.textContent='Tento prohlížeč nepodporuje rozpoznávání řeči. Kartičku můžeš otočit ručně.';return}
+ swissStopSpeech();
+ const rec=new Speech();swissSpeechRecognizer=rec;rec.lang='en-GB';rec.continuous=false;rec.interimResults=false;rec.maxAlternatives=5;
+ status.textContent='🎙️ Poslouchám. Vyslov anglické slovíčko.';
+ rec.onresult=ev=>{
+  if(swissSpeechRecognizer!==rec)return;
+  const heard=Array.from(ev.results[0]||[]).map(x=>x.transcript),target=swissSpeechText(item.word);
+  if(heard.some(x=>swissSpeechText(x)===target)){swissSpeechRecognizer=null;onMatch()}
+  else status.textContent='Rozpoznáno: „'+(heard[0]||'')+'“. Zkus to znovu nebo otoč kartičku ručně.';
+ };
+ rec.onerror=ev=>{if(swissSpeechRecognizer!==rec)return;status.textContent=ev.error==='not-allowed'?'Povol mikrofon v Safari, nebo kartičku otoč ručně.':'Rozpoznávání selhalo ('+ev.error+'). Zkus to znovu.'};
+ rec.onend=()=>{if(swissSpeechRecognizer===rec)swissSpeechRecognizer=null};
+ try{rec.start()}catch(e){status.textContent='Mikrofon se nepodařilo zapnout. Použij ruční otočení.'}
+}
 let swissFlip=null;
 function swissPicture(word){const w=word.toLowerCase().trim();if(swissPictures[w])return swissPictures[w];if(/train|rail|station|platform/.test(w))return '🚆';if(/mountain|alps|hill/.test(w))return '🏔️';if(/talk|reply|answer|question|explain|tell|speak/.test(w))return '💬';if(/see|notice|watch|look|view/.test(w))return '👀';if(/go|walk|travel|journey|trip|move/.test(w))return '🚶';if(/food|eat|restaurant|meal/.test(w))return '🍽️';if(/book|read|letter|page/.test(w))return '📖';return '🧩📚'}
 function startSwissFlip(start){const words=swissBank.slice(start,start+10);if(!words.length)return;swissPractice=null;swissFlip={words,start,index:0,flipped:false};showSwissFlip();$('swiss-bank').scrollIntoView({behavior:'smooth'})}
 function showSwissFlip(){
+ swissStopSpeech();
  const host=$('swiss-bank-practice');host.replaceChildren();if(!swissFlip)return;
  const p=swissFlip,item=p.words[p.index],deck=document.createElement('div');deck.className='swiss-flip-deck';
  deck.append(swissText('p','🖼 Obrázkové kartičky · Lekce '+(Math.floor(p.start/10)+1)));
@@ -43,15 +63,23 @@ function showSwissFlip(){
  controls.append(swissButton('Další →',()=>{p.index=(p.index+1)%p.words.length;p.flipped=false;showSwissFlip()}));
  controls.append(swissButton('🔀 Zamíchat',()=>{p.words=[...p.words].sort(()=>Math.random()-.5);p.index=0;p.flipped=false;showSwissFlip()}));
  controls.append(swissButton('✓ Klasické procvičování',()=>{swissFlip=null;startSwissPractice(p.start)}));
- deck.append(controls);host.append(deck)
+ const speechStatus=swissText('p','Řekni anglické slovo. Při rozpoznání se kartička sama otočí.');speechStatus.setAttribute('role','status');
+ const speechButton=swissButton('🎤 Vyslovit slovo',()=>swissRecogniseCard(item,()=>{if(swissFlip!==p||p.words[p.index]!==item)return;p.flipped=true;card.classList.add('flipped');card.setAttribute('aria-pressed','true');card.setAttribute('aria-label','Zobrazit anglické slovo');speechStatus.textContent='✓ Rozpoznáno! Kartička se otočila.'},speechStatus));
+ deck.append(speechButton,speechStatus,controls);host.append(deck)
 }
 function startSwissPractice(start){const words=swissBank.slice(start,start+10);if(!words.length)return;swissPractice={words,start,index:0,known:0,revealed:false};showSwissPractice();$('swiss-bank').scrollIntoView({behavior:'smooth'})}
 function showSwissPractice(){
+ swissStopSpeech();
  const host=$('swiss-bank-practice');host.replaceChildren();if(!swissPractice)return;
  const p=swissPractice,card=document.createElement('div');card.className='swiss-bank-card',lesson=Math.floor(p.start/10)+1;
  if(p.index===p.words.length){card.append(swissText('h3','Lekce '+lesson+' dokončena! 🎉'),swissText('p','Znal/a jsi '+p.known+' z '+p.words.length+' slovíček.'));card.append(swissButton('Zopakovat',()=>startSwissPractice(p.start)));if(p.start+10<swissBank.length)card.append(swissButton('Další lekce',()=>startSwissPractice(p.start+10)));host.append(card);return}
  const item=p.words[p.index];card.append(swissText('p','Lekce '+lesson+' · Slovo '+(p.index+1)+' / '+p.words.length),swissText('h3',item.word));
- if(!p.revealed){card.append(swissText('p','Zkus si vzpomenout na český význam.'));card.append(swissButton('👁 Ukázat překlad',()=>{p.revealed=true;showSwissPractice()}))}
+ if(!p.revealed){
+ card.append(swissText('p','Zkus si vzpomenout na český význam.'));
+ const status=swissText('p','Vyslov slovo anglicky. Když ho prohlížeč rozpozná, ukáže překlad.');status.setAttribute('role','status');
+ card.append(swissButton('🎤 Vyslovit slovo',()=>swissRecogniseCard(item,()=>{if(swissPractice!==p||p.words[p.index]!==item)return;p.revealed=true;showSwissPractice()},status)),status);
+ card.append(swissButton('👁 Ukázat překlad',()=>{p.revealed=true;showSwissPractice()}))
+}
  else{card.append(swissText('p','🇨🇿 '+item.cs));for(const known of [true,false])card.append(swissButton(known?'✓ Znal/a jsem':'✕ Neznal/a jsem',()=>{const original=swissBank.find(x=>x.word===item.word);if(original){if(known)original.known=(original.known||0)+1;else original.wrong=(original.wrong||0)+1}if(known)p.known++;saveSwissBank();p.index++;p.revealed=false;showSwissPractice()}))}
  host.append(card)
 }
