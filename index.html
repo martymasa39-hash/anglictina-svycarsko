@@ -43,30 +43,31 @@ function swissRecogniseCard(item,onMatch,status){
 }
 let swissFlip=null;
 function swissPicture(word){const w=word.toLowerCase().trim();if(swissPictures[w])return swissPictures[w];if(/train|rail|station|platform/.test(w))return '🚆';if(/mountain|alps|hill/.test(w))return '🏔️';if(/talk|reply|answer|question|explain|tell|speak/.test(w))return '💬';if(/see|notice|watch|look|view/.test(w))return '👀';if(/go|walk|travel|journey|trip|move/.test(w))return '🚶';if(/food|eat|restaurant|meal/.test(w))return '🍽️';if(/book|read|letter|page/.test(w))return '📖';return '🧩📚'}
-function startSwissFlip(start){const words=swissBank.slice(start,start+10);if(!words.length)return;swissPractice=null;swissFlip={words,start,index:0,flipped:false};showSwissFlip();$('swiss-bank').scrollIntoView({behavior:'smooth'})}
+function startSwissFlip(start){const words=swissBank.slice(start,start+10);if(!words.length)return;swissPractice=null;swissFlip={words,start,index:0,flipped:false,reverse:false};showSwissFlip();$('swiss-bank').scrollIntoView({behavior:'smooth'})}
 function showSwissFlip(){
  swissStopSpeech();
  const host=$('swiss-bank-practice');host.replaceChildren();if(!swissFlip)return;
  const p=swissFlip,item=p.words[p.index],deck=document.createElement('div');deck.className='swiss-flip-deck';
  deck.append(swissText('p','🖼 Obrázkové kartičky · Lekce '+(Math.floor(p.start/10)+1)));
+ deck.append(swissButton(p.reverse?'🇨🇿 → 🇬🇧 Česky na anglicky ✓':'🇬🇧 → 🇨🇿 Anglicky na česky ✓',()=>{p.reverse=!p.reverse;p.flipped=false;showSwissFlip()}));
  const progress=swissText('p','Kartička '+(p.index+1)+' z '+p.words.length);progress.className='swiss-flip-progress';deck.append(progress);
- const card=document.createElement('button');card.type='button';card.className='swiss-flip-card'+(p.flipped?' flipped':'');card.setAttribute('aria-label',p.flipped?'Zobrazit anglické slovo':'Otočit kartičku a zobrazit český překlad');card.setAttribute('aria-pressed',String(p.flipped));
+ const card=document.createElement('button');card.type='button';card.className='swiss-flip-card'+(p.flipped?' flipped':'');card.setAttribute('aria-label',p.flipped?'Otočit kartičku zpět':p.reverse?'Otočit kartičku a zobrazit anglické slovo':'Otočit kartičku a zobrazit český překlad');card.setAttribute('aria-pressed',String(p.flipped));
  const inner=document.createElement('span');inner.className='swiss-flip-inner';
  const front=document.createElement('span');front.className='swiss-flip-face swiss-flip-front';
- const visual=swissText('span',swissPicture(item.word));visual.className='swiss-flip-visual';visual.setAttribute('aria-hidden','true');
- const en=swissText('span',item.word);en.className='swiss-flip-word';
+ const visual=swissText('span',swissPicture(item.word));visual.className='swiss-flip-visual';visual.setAttribute('aria-hidden','true');if(p.reverse)visual.hidden=true;
+ const en=swissText('span',p.reverse?item.cs:item.word);en.className='swiss-flip-word';
  const hint=swissText('span','Klepni a otoč kartičku ↻');hint.className='swiss-flip-hint';front.append(visual,en,hint);
- const back=document.createElement('span');back.className='swiss-flip-face swiss-flip-back';back.append(swissText('span','🇨🇿 Český překlad'));
- const cz=swissText('span',item.cs);cz.className='swiss-flip-meaning';back.append(cz);
+ const back=document.createElement('span');back.className='swiss-flip-face swiss-flip-back';back.append(swissText('span',p.reverse?'🇬🇧 Anglické slovo':'🇨🇿 Český překlad'));
+ const cz=swissText('span',p.reverse?item.word:item.cs);cz.className='swiss-flip-meaning';back.append(cz);
  back.append(swissText('span','Klepni pro otočení zpět ↻'));
- inner.append(front,back);card.append(inner);card.onclick=()=>{p.flipped=!p.flipped;card.classList.toggle('flipped',p.flipped);card.setAttribute('aria-pressed',String(p.flipped));card.setAttribute('aria-label',p.flipped?'Zobrazit anglické slovo':'Otočit kartičku a zobrazit český překlad')};deck.append(card);
+ inner.append(front,back);card.append(inner);card.onclick=()=>{p.flipped=!p.flipped;card.classList.toggle('flipped',p.flipped);card.setAttribute('aria-pressed',String(p.flipped));card.setAttribute('aria-label',p.flipped?'Otočit kartičku zpět':p.reverse?'Otočit kartičku a zobrazit anglické slovo':'Otočit kartičku a zobrazit český překlad')};deck.append(card);
  const controls=document.createElement('div');controls.className='swiss-flip-controls';
  controls.append(swissButton('← Předchozí',()=>{p.index=(p.index-1+p.words.length)%p.words.length;p.flipped=false;showSwissFlip()}));
  controls.append(swissButton('Další →',()=>{p.index=(p.index+1)%p.words.length;p.flipped=false;showSwissFlip()}));
  controls.append(swissButton('🔀 Zamíchat',()=>{p.words=[...p.words].sort(()=>Math.random()-.5);p.index=0;p.flipped=false;showSwissFlip()}));
  controls.append(swissButton('✓ Klasické procvičování',()=>{swissFlip=null;startSwissPractice(p.start)}));
- const speechStatus=swissText('p','Řekni anglické slovo. Při rozpoznání se kartička sama otočí.');speechStatus.setAttribute('role','status');
- const speechButton=swissButton('🎤 Vyslovit slovo',()=>swissRecogniseCard(item,()=>{if(swissFlip!==p||p.words[p.index]!==item)return;p.flipped=true;card.classList.add('flipped');card.setAttribute('aria-pressed','true');card.setAttribute('aria-label','Zobrazit anglické slovo');speechStatus.textContent='✓ Rozpoznáno! Kartička se otočila.'},speechStatus));
+ const speechStatus=swissText('p',p.reverse?'Přečti český význam a řekni anglické slovo. Při rozpoznání se kartička otočí.':'Řekni anglické slovo. Při rozpoznání se kartička sama otočí.');speechStatus.setAttribute('role','status');
+ const speechButton=swissButton(p.reverse?'🎤 Říct anglický překlad':'🎤 Vyslovit slovo',()=>swissRecogniseCard(item,()=>{if(swissFlip!==p||p.words[p.index]!==item)return;p.flipped=true;card.classList.add('flipped');card.setAttribute('aria-pressed','true');card.setAttribute('aria-label','Zobrazit anglické slovo');speechStatus.textContent='✓ Rozpoznáno! Kartička se otočila.'},speechStatus));
  deck.append(speechButton,speechStatus,controls);host.append(deck)
 }
 function startSwissPractice(start){const words=swissBank.slice(start,start+10);if(!words.length)return;swissPractice={words,start,index:0,known:0,revealed:false};showSwissPractice();$('swiss-bank').scrollIntoView({behavior:'smooth'})}
