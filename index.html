@@ -145,6 +145,14 @@ $('font-size').onclick=()=>{document.body.classList.toggle('big');$('font-size')
  let total=0,history={};
  try{total=Math.max(0,Number(localStorage.getItem(TOTAL_KEY))||0)}catch(e){}
  try{const saved=JSON.parse(localStorage.getItem(HISTORY_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved)){for(const [day,seconds] of Object.entries(saved)){if(/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(Number(seconds))&&Number(seconds)>=0)history[day]=Number(seconds)}}}catch(e){}
+ // Preserve the previously documented 50-minute total without counting it twice.
+ const RESTORE_KEY='swiss-book-50-minutes-restored-v1';
+ try{
+  if(localStorage.getItem(RESTORE_KEY)!=='yes'){
+   if(total<3000){total=3000;localStorage.setItem(TOTAL_KEY,String(total))}
+   localStorage.setItem(RESTORE_KEY,'yes');
+  }
+ }catch(e){}
  let last=Date.now();
  function dayKey(time){const d=new Date(time);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
  function format(seconds){const minutes=Math.floor(seconds/60),hours=Math.floor(minutes/60);return hours?hours+' h '+String(minutes%60).padStart(2,'0')+' min':minutes+' min'}
