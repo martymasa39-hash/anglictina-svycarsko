@@ -152,9 +152,13 @@ function speak(s){
  synth.cancel();
  const utterance=new SpeechSynthesisUtterance(String(s||''));
  utterance.lang='en-GB';utterance.rate=Number($('speed').value)||0.8;utterance.pitch=1;
- const voices=synth.getVoices(),voice=voices.find(v=>v.lang.toLowerCase().startsWith('en-gb'))||voices.find(v=>v.lang.toLowerCase().startsWith('en'));
- if(voice)utterance.voice=voice;
- swissReadingStatus('🔊 Spouštím čtení… Pokud není slyšet, zkontroluj hlasitost médií na iPhonu.');
+ const voices=synth.getVoices();
+ // Only use a voice reported as installed locally on this device.
+ const localVoices=voices.filter(v=>v.localService===true&&/^en([-_]|$)/i.test(v.lang||''));
+ const voice=localVoices.find(v=>/^en[-_]GB$/i.test(v.lang))||localVoices.find(v=>/^en[-_]US$/i.test(v.lang))||localVoices[0];
+ if(!voice){swissReadingStatus('V Safari se nepodařilo najít místní anglický hlas iPhonu. V Nastavení iPhonu → Zpřístupnění → Předčítání obsahu → Hlasy si stáhni anglický hlas. Potom znovu otevři knihu.');return}
+ utterance.voice=voice;utterance.lang=voice.lang;
+ swissReadingStatus('🔊 Spouštím místní hlas iPhonu: '+voice.name+'. Pokud není slyšet, zkontroluj hlasitost médií.');
  utterance.onstart=()=>{if(session===swissReadingSession)swissReadingStatus('🔊 Právě čtu odstavec…')};
  utterance.onend=()=>{if(session===swissReadingSession)swissReadingStatus('✓ Odstavec dočten.')};
  utterance.onerror=e=>{if(session===swissReadingSession)swissReadingStatus('Čtení selhalo ('+e.error+'). Hlas Safari nemusí být dostupný. Použij hlasový režim ChatGPT.')};
